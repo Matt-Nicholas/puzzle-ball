@@ -1,7 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Experimental.UIElements;
 using UnityEngine.UI;
 
 public class ItemPanel : MonoBehaviour {
@@ -31,10 +29,10 @@ public class ItemPanel : MonoBehaviour {
     this.items = items;
 
     for (int i = 0; i < items.Count; i++) {
-      //Button butt = Instantiate(buttonPrefab).GetComponent<Button>();
+            //Button butt = Instantiate(buttonPrefab).GetComponent<Button>();
 
-      //butt.text = items[i].name + " " + i;
+            //butt.text = items[i].name + " " + i;
 
-    }
+        }
   }
 }

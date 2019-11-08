@@ -18,38 +18,11 @@ public class GameManager:SingletonPersistant<GameManager>
 
     public GameManager() { }
 
-    public void CompletedLevel(int levelCompleted)
-    {
-        _lastLevelPlayed = levelCompleted;
-
-        if(_highestLevelUnlocked < levelCompleted)
-        {
-            _highestLevelUnlocked = levelCompleted;
-        }
-
-        if(SceneManager.GetActiveScene().buildIndex < (EditorBuildSettings.scenes.Length - 1))
-            Invoke("NextLevel", 2.0f);
-        else
-        {
-            Debug.Log("YOU BEAT THE GAME!");
-        }
-        //ParticleSystem.Instantiate.particleSystem(fireworks);
-
-    }
-
-    void NextLevel()
-    {
-        
-        if(_lastLevelPlayed >= EditorBuildSettings.scenes.Length) return;
-
-        LoadLevel(_lastLevelPlayed + 1);
-    }
-
     protected virtual void Awake()
     {
         base.Awake();
 
-        if(FileExists(name))
+        if (FileExists(name))
         {
             _playerData = LoadGame(name);
         }
@@ -59,7 +32,40 @@ public class GameManager:SingletonPersistant<GameManager>
             SaveGame(name, _playerData);
         }
 
-        LoadLevel(_playerData.Level);
+        LoadScene("Menu");
+    }
+
+    public void CompletedLevel(int levelCompleted)
+    {
+        _lastLevelPlayed = levelCompleted;
+
+        if(_highestLevelUnlocked < levelCompleted)
+        {
+            _highestLevelUnlocked = levelCompleted;
+        }
+
+        //if(SceneManager.GetActiveScene().buildIndex < (UnityEditor.EditorBuildSettings.scenes.Length - 1))
+        if(SceneManager.GetActiveScene().buildIndex < 4)
+                Invoke("NextLevel", 2.0f);
+        else
+        {
+            Debug.Log("YOU BEAT THE GAME!");
+        }
+        //ParticleSystem.Instantiate.particleSystem(fireworks);
+
+    }
+
+    private void LoadNextLevel()
+    {
+        
+        if(_lastLevelPlayed >= 4) return;
+
+        LoadScene(_lastLevelPlayed + 1);
+    }
+
+    public void LoadMaxLevel()
+    {
+        LoadScene("Level-" + _highestLevelUnlocked);
     }
 
     public void SaveGame(string playerName, PlayerData data)
@@ -140,42 +146,45 @@ public class GameManager:SingletonPersistant<GameManager>
         return false;
     }
 
-    public void LoadLevel(string level, bool additive = true)
+    public void LoadScene(string name, bool additive = true)
     {
         CloseAllAdditiveScenes();
 
         if(additive)
-            SceneManager.LoadScene(level, LoadSceneMode.Additive);
+            SceneManager.LoadScene(name, LoadSceneMode.Additive);
         else
-            SceneManager.LoadScene(level);
+            SceneManager.LoadScene(name);
 
     }
-    public void LoadLevel(int level, bool additive = true)
+    public void LoadScene(int index, bool additive = true)
     {
         CloseAllAdditiveScenes();
 
         if(additive)
-            SceneManager.LoadScene(level, LoadSceneMode.Additive);
+            SceneManager.LoadScene(index, LoadSceneMode.Additive);
         else
-            SceneManager.LoadScene(level);
+            SceneManager.LoadScene(index);
     }
-    public void LoadLevel(Scene level, bool additive = true)
+    public void LoadScene(Scene scene, bool additive = true)
     {
         CloseAllAdditiveScenes();
 
         if(additive)
-            SceneManager.LoadScene(level.name, LoadSceneMode.Additive);
+            SceneManager.LoadScene(scene.name, LoadSceneMode.Additive);
         else
-            SceneManager.LoadScene(level.name);
+            SceneManager.LoadScene(scene.name);
     }
 
     private void CloseAllAdditiveScenes()
     {
-        for(int i = 0; i < SceneManager.sceneCount; i++)
+        for(int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
         {
-            if(SceneManager.GetSceneAt(i).name.Equals("Main")) continue;
+            Scene cScene = SceneManager.GetSceneByBuildIndex(i);
+            if (cScene == null || cScene.name == null) continue;
 
-            SceneManager.UnloadSceneAsync(SceneManager.GetSceneAt(i));
+            if(cScene.name.Equals("Main")) continue;
+
+            SceneManager.UnloadSceneAsync(cScene);
         }
     }
 
@@ -185,7 +194,7 @@ public class GameManager:SingletonPersistant<GameManager>
         {
             if(!SceneManager.GetSceneAt(i).name.Equals("Main"))
             {
-                LoadLevel(SceneManager.GetSceneAt(i));
+                LoadScene(SceneManager.GetSceneAt(i));
                 break;
             }
         }
@@ -193,9 +202,8 @@ public class GameManager:SingletonPersistant<GameManager>
 
     public void Preload(Scene scene)
     {
-        LoadLevel("Main", false);
-        //CloseAllAdditiveScenes();
-        LoadLevel(scene);
+        LoadScene("Main", false);
+        LoadScene(scene);
     }
 
     private void OnGUI()

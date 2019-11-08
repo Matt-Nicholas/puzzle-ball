@@ -8,78 +8,36 @@ using UnityEngine.Events;
 public class GamePiece:MonoBehaviour
 {
     public string name = "unknown";
+    [SerializeField]
+    ValidSnapCheck _validSnapCheck;
 
-    private LayerMask layerMask;
-    private Vector3 startingPos = new Vector3();
-    Quaternion startingRotation = new Quaternion();
     private Vector3 screenPoint;
-    private bool isDragging;
+    private Vector3 startingPos = new Vector3();
+    private LayerMask layerMask;
+    private Quaternion startingRotation = new Quaternion();
+
     private bool isSnapped = false;
     private bool inSnapRange = false;
 
-    private float maxHitDistance = 0.7f;
+    private float maxHitDistance = 0.5f;
     private int currentZRot = 0;
-    
-    private UnityEvent snapToSurfaceEvent;
-    private UnityAction<string> _eventListener;
+
 
     private void Awake()
     {
-        
+
         layerMask = LayerMask.NameToLayer("Snappable");
         startingPos = transform.position;
         startingRotation = transform.rotation;
     }
 
-    private void Update()
-    {
-        inSnapRange = false;
-
-        Hit hit = GetClosestHit();
-        if(hit != null)
-        {
-            inSnapRange = true;
-
-            transform.Rotate(transform.rotation.x, transform.rotation.y, hit.zRotation);
-            currentZRot = hit.zRotation;
-
-            //float halfWidth = hit.hit.transform.GetComponent<Renderer>().bounds.size.x;
-            //float halfHeight = hit.hit.transform.GetComponent<Renderer>().bounds.size.y;
-
-
-            //if(currentZRot == 0)
-            //{
-            //    snapPos = new Vector3(hit.hit.transform.position.x, hit.hit.transform.position.y + halfHeight, hit.hit.transform.position.z);
-            //}
-
-            //if(!isDragging)
-            //{
-            //    transform.position = snapPos;
-            //}
-            //else if(currentZRot == 90)
-            //{
-            //    snapPos = new Vector3(hit.hit.transform.position.x + (rt.rect.width / 2), hit.hit.transform.position.y, hit.hit.transform.position.z);
-            //}
-            //else if(currentZRot == 180)
-            //{
-            //    snapPos = new Vector3(hit.hit.transform.position.x + rt.rect.width, hit.hit.transform.position.y - (rt.rect.height / 2), hit.hit.transform.position.z);
-            //}
-            //else if(currentZRot == 270)
-            //{
-            //    snapPos = new Vector3(hit.hit.transform.position.x - (rt.rect.width / 2), hit.hit.transform.position.y, hit.hit.transform.position.z);
-            //}
-        }
-    }
-
     void OnMouseDown()
     {
-        isDragging = true;
-        screenPoint = Camera.main.WorldToScreenPoint(gameObject.transform.position);
+        //screenPoint = Camera.main.WorldToScreenPoint(gameObject.transform.position);
     }
 
     private void OnMouseUp()
     {
-        isDragging = false;
         if(!isSnapped)
         {
             transform.position = startingPos;
@@ -89,12 +47,22 @@ public class GamePiece:MonoBehaviour
 
     void OnMouseDrag()
     {
+        inSnapRange = false;
+
+        Hit hit = GetClosestHit();
+        screenPoint = Camera.main.WorldToScreenPoint(gameObject.transform.position);
+
         Vector3 curScreenPoint = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPoint.z);
         Vector3 dragPos = Camera.main.ScreenToWorldPoint(curScreenPoint);
-        if(inSnapRange)
+
+        if(hit != null && (Vector3.Distance(dragPos, hit.hit.transform.position + hit.hit.normal) < 1) && ValidSnapPosition())
         {
-            double x = Math.Round(dragPos.x * 2, MidpointRounding.AwayFromZero) / 2;
-            double y = Math.Round(dragPos.y * 2, MidpointRounding.AwayFromZero) / 2;
+            transform.Rotate(transform.rotation.x, transform.rotation.y, hit.zRotation);
+            currentZRot = hit.zRotation;
+
+            double x = hit.hit.normal.x == 0 ? Math.Round(dragPos.x * 2, MidpointRounding.AwayFromZero) / 2 : hit.hit.transform.position.x + (((Math.Abs(hit.hit.transform.localScale.x) / 2) + (Math.Abs(transform.localScale.x) / 2)) * Math.Sign(hit.hit.normal.x));
+            double y = hit.hit.normal.y == 0 ? Math.Round(dragPos.y * 2, MidpointRounding.AwayFromZero) / 2 : hit.hit.transform.position.y + (((Math.Abs(hit.hit.transform.localScale.y) / 2) + (Math.Abs(transform.localScale.y) / 2)) * Math.Sign(hit.hit.normal.y));
+              
             Vector3 snapPos = new Vector3((float)x, (float)y, dragPos.z);
 
             transform.position = new Vector3(snapPos.x, snapPos.y, 0);
@@ -135,11 +103,36 @@ public class GamePiece:MonoBehaviour
             {
                 if(closestHit == null || hit.distance < closestHit.hit.distance)
                 {
-                    closestHit = new Hit(hit, ray.Key);
+                    closestHit = new Hit(new RaycastHit(), ray.Key)
+                    {
+                        hit = hit
+                    };
                 }
             }
         }
         return closestHit;
+    }
+
+    private bool ValidSnapPosition()
+    {
+        return _validSnapCheck.IsValid();
+
+        List<Vector3> rays = new List<Vector3>()
+            {
+                {new Vector3(0, 0, 1) },
+                {new Vector3(0, 0, -1) }
+            };
+
+        foreach(var ray in rays)
+        {
+            RaycastHit hit;
+            if(Physics.Raycast(transform.position, transform.TransformDirection(ray), out hit, maxHitDistance, layerMask))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public virtual void Interact()
@@ -151,7 +144,7 @@ public class GamePiece:MonoBehaviour
     {
         transform.localScale = new Vector3(-transform.localScale.x, transform.localScale.y, transform.localScale.z);
     }
-    
+
     public void InvertY()
     {
         transform.localScale = new Vector3(transform.localScale.x, -transform.localScale.y, transform.localScale.z);
